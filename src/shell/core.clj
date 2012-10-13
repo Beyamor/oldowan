@@ -4,6 +4,8 @@
 (def working-directory (atom nil))
 
 (def prompt-terminator "೯ ")
+(def shell-commands
+  {"pwd" :print-working-directory})
 
 (defn get-working-directory
   "Returns the working directory as a Java file."
@@ -37,10 +39,17 @@
   [command]
   (println (str "invalid command: " command)))
 
+(defmulti execute-shell-command keyword)
+(defmethod execute-shell-command :print-working-directory
+  [_]
+  (println (get-working-directory-name)))
+
 (defn process-command
   "Does *something* with a command."
   [command]
-  (print-invalid-command command))
+  (if-let [shell-command (shell-commands command)]
+    (execute-shell-command shell-command)
+    (print-invalid-command command)))
 
 (defn start-read-loop
   "That thing that does the things."
