@@ -8,7 +8,6 @@
 (defn get-working-directory
   "Returns the working directory as a Java file."
   []
-  {:post [(instance? File %)]}
   @working-directory)
 
 (defn get-working-directory-name
@@ -19,7 +18,6 @@
 (defn set-working-directory
   "Sets the working directory."
   [new-working-directory]
-  {:pre [(instance? File new-working-directory)]}
   (reset! working-directory new-working-directory))
 
 (defn print-prompt
@@ -34,10 +32,15 @@
   []
   (read-line))
 
+(defn print-invalid-command
+  "Prints the response to a bad command."
+  [command]
+  (println (str "invalid command: " command)))
+
 (defn process-command
   "Does *something* with a command."
   [command]
-  (println (str " -> " command)))
+  (print-invalid-command command))
 
 (defn start-read-loop
   "That thing that does the things."
