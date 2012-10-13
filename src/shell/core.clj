@@ -47,9 +47,10 @@
 (defn process-command
   "Does *something* with a command."
   [command]
-  (if-let [shell-command (shell-commands command)]
-    (execute-shell-command shell-command)
-    (print-invalid-command command)))
+  (if (not (empty? command))
+    (if-let [shell-command (shell-commands command)]
+      (execute-shell-command shell-command)
+      (print-invalid-command command))))
 
 (defn start-read-loop
   "That thing that does the things."
