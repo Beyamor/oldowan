@@ -1,14 +1,31 @@
 (ns shell.core
   (:import [java.io File]))
 
-(def current-dir (atom nil))
+(def working-directory (atom nil))
 
 (def prompt-terminator "೯ ")
+
+(defn get-working-directory
+  "Returns the working directory as a Java file."
+  []
+  {:post [(instance? File %)]}
+  @working-directory)
+
+(defn get-working-directory-name
+  "Returns the name of the working directory."
+  []
+  (.getAbsolutePath (get-working-directory)))
+
+(defn set-working-directory
+  "Sets the working directory."
+  [new-working-directory]
+  {:pre [(instance? File new-working-directory)]}
+  (reset! working-directory new-working-directory))
 
 (defn print-prompt
   "Prints the command prompt string."
   []
-  (let [path-name (.getAbsolutePath @current-dir)]
+  (let [path-name (get-working-directory-name)]
     (print (str path-name prompt-terminator))
     (flush)))
 
@@ -35,7 +52,7 @@
 (defn setup
   "Initializes whatevs out little shelly needs."
   []
-  (reset! current-dir (File. (System/getProperty "user.dir"))))
+  (set-working-directory (File. (System/getProperty "user.dir"))))
 
 (defn -main
   "Our cute little main method."
