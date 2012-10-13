@@ -5,7 +5,8 @@
 
 (def prompt-terminator "೯ ")
 (def shell-commands
-  {"pwd" :print-working-directory})
+  {"pwd" :print-working-directory
+   "c-and-a" :print-command-and-args})
 
 (defn get-working-directory
   "Returns the working directory as a Java file."
@@ -29,27 +30,43 @@
     (print (str path-name prompt-terminator))
     (flush)))
 
-(defn get-command
+(defn read-command
   "Reads a command from standard input."
   []
   (read-line))
+
+(defn parse-command
+  "Parses a command and its args out of a command string."
+  [command-string]
+  (.split command-string " "))
+
+(defn get-command
+  "Gets a command from standard in and parses it."
+  []
+  (parse-command (read-command)))
 
 (defn print-invalid-command
   "Prints the response to a bad command."
   [command]
   (println (str "invalid command: " command)))
 
-(defmulti execute-shell-command keyword)
+(defmulti execute-shell-command (fn [command & args] (keyword command)))
+
 (defmethod execute-shell-command :print-working-directory
-  [_]
+  [command & args]
   (println (get-working-directory-name)))
+
+(defmethod execute-shell-command :print-command-and-args
+  [command & args]
+  (println (str "Command: " command))
+  (doall (map-indexed (fn [index arg] (println (str "Arg" index ": " arg))) args)))
 
 (defn process-command
   "Does *something* with a command."
-  [command]
+  [command & args]
   (if (not (empty? command))
     (if-let [shell-command (shell-commands command)]
-      (execute-shell-command shell-command)
+      (apply execute-shell-command shell-command args)
       (print-invalid-command command))))
 
 (defn start-read-loop
@@ -58,8 +75,8 @@
   (loop []
     (do
       (print-prompt)
-      (let [command (get-command)]
-        (process-command command)
+      (let [command-and-args (get-command)]
+        (apply process-command command-and-args)
         (recur)))))
 
 (defn setup
