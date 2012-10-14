@@ -105,18 +105,40 @@
         (doall (map #(println (.getName %)) (.listFiles dir)))))
     (execute-command "ls" ".")))
 
+(defmethod execute-command "~"
+  [command & args]
+  (try
+    (println (eval (read-string (apply str (interpose " " args)))))
+    (catch Exception e
+      (.printStackTrace e))))
+
 (defmethod execute-command "exit"
   [command & args]
   :exit)
 
-(defmethod execute-command :default
-  [command & args]
+(defn execute-clojure
+  "Tries to execute some Clojure."
+  [& tokens]
   (try
-    (doto (ProcessBuilder. (cons command args))
+    (-> (apply str (interpose " " tokens)) read-string eval println)
+    (catch Exception e
+      (.printStackTrace e))))
+
+(defn execute-process
+  "Tries to execute an arbitrary process."
+  [& command-and-args]
+  (try
+    (doto (ProcessBuilder. command-and-args)
       (.directory (get-working-directory))
       (.start))
-    (catch IOException e
-      (print-invalid-command command))))
+    (catch IOException e ; assume this comes from being unable to find prcess
+      (print-invalid-command (first command-and-args)))))
+
+(defmethod execute-command :default
+  [command & args]
+  (if (.startsWith command "(")
+    (apply execute-clojure command args)
+    (apply execute-process command args)))
 
 (defn process-command
   "Does *something* with a command.
