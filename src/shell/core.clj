@@ -71,7 +71,7 @@
 (defn print-invalid-command
   "Prints the response to a bad command."
   [command]
-  (println (str "invalid command: " command)))
+  (println (str "unexpected command: " command)))
 
 (defmulti execute-command (fn [command & args] command))
 
