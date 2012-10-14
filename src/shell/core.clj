@@ -1,5 +1,6 @@
 (ns shell.core
-  (:import [java.io File]))
+  (:import [java.io File IOException]
+           [java.lang ProcessBuilder]))
 
 (def working-directory (atom nil))
 
@@ -107,14 +108,19 @@
 
 (defmethod execute-command :default
   [command & args]
-  (print-invalid-command command))
+  (try
+    (doto (ProcessBuilder. (cons command args))
+      (.directory (get-working-directory))
+      (.start))
+    (catch IOException e
+      (print-invalid-command command))))
 
 (defn process-command
   "Does *something* with a command.
    Returns :exit on exit commands."
-  [command & args]
-  (if (not (empty? command))
-    (apply execute-command command args)))
+  [& command-and-args]
+  (if (not (empty? command-and-args))
+    (apply execute-command command-and-args)))
 
 (defn start-read-loop
   "That thing that does the things."
