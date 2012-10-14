@@ -5,6 +5,8 @@
 
 (def prompt-terminator "೯ ")
 
+(def exit-message "λ Bye λ")
+
 (defn get-working-directory
   "Returns the working directory as a Java file."
   []
@@ -77,12 +79,17 @@
         (println (str dir " does not exist"))))
     (println "Where?")))
 
+(defmethod execute-command "exit"
+  [command & args]
+  :exit)
+
 (defmethod execute-command :default
   [command & args]
   (print-invalid-command command))
 
 (defn process-command
-  "Does *something* with a command."
+  "Does *something* with a command.
+   Returns :exit on exit commands."
   [command & args]
   (if (not (empty? command))
     (apply execute-command command args)))
@@ -93,9 +100,11 @@
   (loop []
     (do
       (print-prompt)
-      (let [command-and-args (get-command)]
-        (apply process-command command-and-args)
-        (recur)))))
+      (let [command-and-args (get-command)
+            results (apply process-command command-and-args)]
+        (if (not= :exit results)
+          (recur)
+          (println exit-message))))))
 
 (defn setup
   "Initializes whatevs out little shelly needs."
