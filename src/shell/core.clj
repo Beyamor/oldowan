@@ -13,12 +13,20 @@
 (defn get-working-directory-name
   "Returns the name of the working directory."
   []
-  (.getAbsolutePath (get-working-directory)))
+  (.getCanonicalPath (get-working-directory)))
 
 (defn set-working-directory
   "Sets the working directory."
   [new-working-directory]
   (reset! working-directory new-working-directory))
+
+(defn get-file
+  "Given a path, this finds a file (relative to the working directory)"
+  [path]
+  (let [path-file (File. path)]
+    (if (.isAbsolute path-file)
+      path-file
+      (File. (get-working-directory) path))))
 
 (defn print-prompt
   "Prints the command prompt string."
@@ -57,6 +65,12 @@
   [command & args]
   (println (str "Command: " command))
   (doall (map-indexed (fn [index arg] (println (str "Arg" index ": " arg))) args)))
+
+(defmethod execute-command "cd"
+  [command & args]
+  (if-let [path (first args)]
+    (set-working-directory (get-file path))
+    (println "Where?")))
 
 (defmethod execute-command :default
   [command & args]
