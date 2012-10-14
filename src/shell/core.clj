@@ -31,7 +31,10 @@
 (defn get-file
   "Given a path, this finds a file (relative to the working directory)"
   [path]
-  (let [path-file (File. path)]
+  (let [path (if (.startsWith path "~")
+               (str (System/getProperty "user.home") (.substring path 1))
+               path)
+        path-file (File. path)]
     (if (.isAbsolute path-file)
       path-file
       (File. (get-working-directory) path))))
