@@ -5,7 +5,12 @@
 
 (def prompt-terminator "೯ ")
 
-(def exit-message "λ Bye λ")
+(def exit-message "Make a sharper rock.")
+
+(defn print-error
+  "Prints an error message."
+  [s]
+  (println (str "Error: " s)))
 
 (defn get-working-directory
   "Returns the working directory as a Java file."
@@ -29,6 +34,17 @@
     (if (.isAbsolute path-file)
       path-file
       (File. (get-working-directory) path))))
+
+(defn use-directory
+  "Tries to perform an operation with a directory,
+   failing out with print messages if the directory
+   specified doesn't exist or is not actually a directory."
+  [dir f]
+  (if (.exists dir)
+    (if (.isDirectory dir)
+      (f dir)
+      (print-error (str (.getCanonicalPath dir) " is not a directory")))
+    (print-error (str (.getCanonicalPath dir) " does not exist"))))
 
 (defn print-prompt
   "Prints the command prompt string."
@@ -71,13 +87,19 @@
 (defmethod execute-command "cd"
   [command & args]
   (if-let [path (first args)]
-    (let [dir (get-file path)]
-      (if (.exists dir)
-        (if (.isDirectory dir)
-          (set-working-directory dir)
-          (println (str dir " is not a directory")))
-        (println (str dir " does not exist"))))
+    (use-directory
+      (get-file path)
+      set-working-directory)
     (println "Where?")))
+
+(defmethod execute-command "ls"
+  [command & args]
+  (if-let [path (first args)]
+    (use-directory
+      (get-file path)
+      (fn [dir]
+        (doall (map #(println (.getName %)) (.listFiles dir)))))
+    (execute-command "ls" ".")))
 
 (defmethod execute-command "exit"
   [command & args]
