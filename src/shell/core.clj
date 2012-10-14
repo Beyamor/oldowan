@@ -69,7 +69,12 @@
 (defmethod execute-command "cd"
   [command & args]
   (if-let [path (first args)]
-    (set-working-directory (get-file path))
+    (let [dir (get-file path)]
+      (if (.exists dir)
+        (if (.isDirectory dir)
+          (set-working-directory dir)
+          (println (str dir " is not a directory")))
+        (println (str dir " does not exist"))))
     (println "Where?")))
 
 (defmethod execute-command :default
