@@ -105,13 +105,6 @@
         (doall (map #(println (.getName %)) (.listFiles dir)))))
     (execute-command "ls" ".")))
 
-(defmethod execute-command "~"
-  [command & args]
-  (try
-    (println (eval (read-string (apply str (interpose " " args)))))
-    (catch Exception e
-      (.printStackTrace e))))
-
 (defmethod execute-command "exit"
   [command & args]
   :exit)
