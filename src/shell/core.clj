@@ -128,9 +128,12 @@
   "Tries to execute an arbitrary process."
   [& command-and-args]
   (try
-    (doto (ProcessBuilder. command-and-args)
-      (.directory (get-working-directory))
-      (.start))
+    (let [processBuilder (doto (ProcessBuilder. command-and-args)
+               (.directory (get-working-directory)))
+          process (.start processBuilder)
+          stream (.getInputStream process)]
+      (with-open [reader (clojure.java.io/reader stream)]
+        (doall (map println (line-seq reader)))))
     (catch IOException e ; assume this comes from being unable to find prcess
       (print-invalid-command (first command-and-args)))))
 
