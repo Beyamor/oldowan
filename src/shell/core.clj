@@ -8,6 +8,8 @@
 
 (def exit-message "Make a sharper rock.")
 
+(def command-continuer "\\")
+
 (defn print-error
   "Prints an error message."
   [s]
@@ -62,6 +64,28 @@
   []
   (read-line))
 
+(defn terminated-command?
+  "Checks if a command line indicates more are coming."
+  [line]
+  (not (.endsWith line command-continuer)))
+
+(defn remove-command-continuer
+  "Removes the command continuation indicator from a line."
+  [line]
+  (let [continuer-index (.lastIndexOf line command-continuer)]
+    (if (not= continuer-index -1)
+      (.substring line 0 continuer-index)
+      line)))
+
+(defn read-full-command
+  "Reads a command that may span multiple lines."
+  []
+  (loop [full-command ""]
+    (let [new-line (read-command)]
+      (if (terminated-command? new-line)
+        (str full-command new-line)
+        (recur (str full-command (remove-command-continuer new-line)))))))
+
 (defn parse-command
   "Parses a command and its args out of a command string."
   [command-string]
@@ -70,7 +94,7 @@
 (defn get-command
   "Gets a command from standard in and parses it."
   []
-  (parse-command (read-command)))
+  (parse-command (read-full-command)))
 
 (defn print-invalid-command
   "Prints the response to a bad command."

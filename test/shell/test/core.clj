@@ -23,3 +23,11 @@
            (is (= "command" command))
            (is (= "arg1" arg1))
            (is (= "arg2" arg2))))
+
+(deftest can-find-command-continuers
+         (is (terminated-command? "cd"))
+         (is (not (terminated-command? "cd\\"))))
+
+(deftest can-remove-line-continuers
+         (is (= "cd" (remove-command-continuer "cd")))
+         (is (= "cd" (remove-command-continuer "cd\\"))))
