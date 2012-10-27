@@ -65,7 +65,7 @@
 (defn parse-command
   "Parses a command and its args out of a command string."
   [command-string]
-  (filter (complement empty?) (.split command-string " ")))
+  (remove empty? (.split command-string " ")))
 
 (defn get-command
   "Gets a command from standard in and parses it."
