@@ -2,8 +2,6 @@
   (:import [java.io File IOException]
            [java.lang ProcessBuilder]))
 
-(def working-directory (atom nil))
-
 (def prompt-terminator "೯ ")
 
 (def exit-message "Make a sharper rock.")
@@ -15,31 +13,40 @@
   [s]
   (println (str "Error: " s)))
 
+(defn valid-execution-environment?
+  "Checks if a possible execution environment is actually valid."
+  [env]
+  (and env (map? env)))
+
 (defn get-working-directory
   "Returns the working directory as a Java file."
-  []
-  @working-directory)
+  [execution-context]
+  {:pre [(valid-execution-environment? execution-context)]
+   :post [%]}
+  (:working-directory execution-context))
 
 (defn get-working-directory-name
   "Returns the name of the working directory."
-  []
-  (.getCanonicalPath (get-working-directory)))
+  [execution-context]
+  (.getCanonicalPath (get-working-directory execution-context)))
 
 (defn set-working-directory
   "Sets the working directory."
-  [new-working-directory]
-  (reset! working-directory new-working-directory))
+  [execution-context new-working-directory]
+  {:pre [(= java.io.File (class new-working-directory))]
+   :post [(valid-execution-environment? %)]}
+  (assoc execution-context :working-directory new-working-directory))
 
 (defn get-file
   "Given a path, this finds a file (relative to the working directory)"
-  [path]
+  [execution-environment path]
   (let [path (if (.startsWith path "~")
                (str (System/getProperty "user.home") (.substring path 1))
                path)
         path-file (File. path)]
     (if (.isAbsolute path-file)
       path-file
-      (File. (get-working-directory) path))))
+      (File. (get-working-directory execution-environment) path))))
 
 (defn use-directory
   "Tries to perform an operation with a directory,
@@ -54,8 +61,8 @@
 
 (defn print-prompt
   "Prints the command prompt string."
-  []
-  (let [path-name (get-working-directory-name)]
+  [execution-environment]
+  (let [path-name (get-working-directory-name execution-environment)]
     (print (str path-name prompt-terminator))
     (flush)))
 
@@ -101,41 +108,41 @@
   [command]
   (println (str "unexpected command: " command)))
 
-(defmulti execute-command (fn [command & args] command))
+(defmulti execute-command (fn [execution-environment command & args] command))
 
 (defmethod execute-command "pwd"
-  [command & args]
-  (println (get-working-directory-name)))
+  [execution-environment command & args]
+  (println (get-working-directory-name execution-environment)))
 
 (defmethod execute-command "command-and-args"
-  [command & args]
+  [execution-environment command & args]
   (println (str "Command: " command))
   (doall (map-indexed (fn [index arg] (println (str "Arg" index ": " arg))) args)))
 
 (defmethod execute-command "cd"
-  [command & args]
+  [execution-environment command & args]
   (if-let [path (first args)]
     (use-directory
-      (get-file path)
-      set-working-directory)
+      (get-file execution-environment path)
+      #(set-working-directory execution-environment %))
     (println "Where?")))
 
 (defmethod execute-command "ls"
-  [command & args]
+  [execution-environment command & args]
   (if-let [path (first args)]
     (use-directory
-      (get-file path)
+      (get-file execution-environment path)
       (fn [dir]
         (doall (map #(println (.getName %)) (.listFiles dir)))))
-    (execute-command "ls" ".")))
+    (execute-command execution-environment "ls" ".")))
 
 (defmethod execute-command "exit"
-  [command & args]
-  :exit)
+  [execution-environment command & args]
+  (assoc execution-environment :exit true))
 
 (defn execute-clojure
   "Tries to execute some Clojure."
-  [& tokens]
+  [execution-environment & tokens]
   (try
     (-> (apply str (interpose " " tokens)) read-string eval println)
     (catch Exception e
@@ -143,10 +150,10 @@
 
 (defn execute-process
   "Tries to execute an arbitrary process."
-  [& command-and-args]
+  [execution-environment & command-and-args]
   (try
     (let [processBuilder (doto (ProcessBuilder. command-and-args)
-               (.directory (get-working-directory)))
+               (.directory (get-working-directory execution-environment)))
           process (.start processBuilder)
           stream (.getInputStream process)]
       (with-open [reader (clojure.java.io/reader stream)]
@@ -155,37 +162,42 @@
       (print-invalid-command (first command-and-args)))))
 
 (defmethod execute-command :default
-  [command & args]
+  [execution-environment command & args]
   (if (.startsWith command "(")
-    (apply execute-clojure command args)
-    (apply execute-process command args)))
+    (apply execute-clojure execution-environment command args)
+    (apply execute-process execution-environment command args)))
 
 (defn process-command
-  "Does *something* with a command.
-   Returns :exit on exit commands."
-  [& command-and-args]
+  "Does *something* with a command."
+  [execution-environment & command-and-args]
+  {:pre [(valid-execution-environment? execution-environment)]
+   :post [(valid-execution-environment? %)]}
   (if (not (empty? command-and-args))
-    (apply execute-command command-and-args)))
+    (let [command-result (apply execute-command execution-environment command-and-args)]
+      (if (valid-execution-environment? command-result)
+        command-result
+        execution-environment))
+    execution-environment))
 
 (defn start-read-loop
   "That thing that does the things."
-  []
-  (loop []
+  [execution-environment]
+  (loop [execution-environment execution-environment]
     (do
-      (print-prompt)
+      (print-prompt execution-environment)
       (let [command-and-args (get-command)
-            results (apply process-command command-and-args)]
-        (if (not= :exit results)
-          (recur)
+            new-execution-environment (apply process-command execution-environment command-and-args)]
+        (if-not (:exit new-execution-environment)
+          (recur new-execution-environment)
           (println exit-message))))))
 
-(defn setup
+(defn create-execution-environment
   "Initializes whatevs out little shelly needs."
   []
-  (set-working-directory (File. (System/getProperty "user.dir"))))
+  (-> {}
+    (set-working-directory (File. (System/getProperty "user.dir")))))
 
 (defn -main
   "Our cute little main method."
   [& args]
-  (setup)
-  (start-read-loop))
+  (start-read-loop (create-execution-environment)))
